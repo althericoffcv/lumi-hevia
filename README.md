@@ -65,7 +65,7 @@ The project focuses on readability, modular commands, fast execution, and easy c
 ## Installation
 
 ```bash
-git clone https://github.com/bayudeveloper/lumi-hevia
+git clone https://github.com/althericoffcv/lumi-hevia
 cd lumi-hevia
 npm install
 ```
