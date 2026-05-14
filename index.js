@@ -11,18 +11,20 @@ import chalk from 'chalk'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-import { logger }          from './lib/logger.js'
-import { loadCommands }    from './lib/loader.js'
-import { messageHandler }  from './lib/handler.js'
-import { startWatcher }    from './watcher/index.js'
-import { config }          from './config/index.js'
+import { logger }           from './lib/logger.js'
+import { loadCommands }     from './lib/loader.js'
+import { messageHandler }   from './lib/handler.js'
+import { startWatcher }     from './watcher/index.js'
+import { config }           from './config/index.js'
+import { handleGroupEvents, handleIncomingMessage } from './lib/groupEvents.js'
+import { getDB }            from './lib/db.js'
 
 const __dirname  = path.dirname(fileURLToPath(import.meta.url))
 const SESSION    = path.resolve(__dirname, 'session')
 const COMMANDS   = path.resolve(__dirname, 'commands')
 const ROOT       = __dirname
 
-const silent   = pino({ level: 'silent' })
+const silent    = pino({ level: 'silent' })
 const startTime = Date.now()
 let commands    = new Map()
 
@@ -61,43 +63,41 @@ async function connect() {
 
   sock.ev.on('creds.update', saveCreds)
 
-  sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+  sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
     if (connection === 'connecting') logger.info('Connecting...')
 
     if (connection === 'open') {
       logger.success(`Connected | ${config.botName} v${config.version}`)
       logger.success(`Commands loaded: ${commands.size}`)
-
       const me = sock.authState.creds.me
       if (me?.id)  logger.info(`JID : ${me.id}`)
       if (me?.lid) logger.info(`LID : ${me.lid}`)
+
+      const db = await getDB()
+      if (db.settings?.publicMode !== undefined) config.publicMode = db.settings.publicMode
     }
 
     if (connection === 'close') {
       const code = new Boom(lastDisconnect?.error)?.output?.statusCode
-      logger.warn(`Connection closed: ${code}`)
-
-      const fatal = [
-        DisconnectReason.badSession,
-        DisconnectReason.connectionReplaced,
-        DisconnectReason.loggedOut,
-      ]
-
-      if (fatal.includes(code)) {
-        logger.error('Fatal. Hapus folder session dan restart.')
-        process.exit(1)
-      }
-
+      logger.warn(`Closed: ${code}`)
+      const fatal = [DisconnectReason.badSession, DisconnectReason.connectionReplaced, DisconnectReason.loggedOut]
+      if (fatal.includes(code)) { logger.error('Fatal. Hapus session dan restart.'); process.exit(1) }
       const delay = code === DisconnectReason.timedOut ? 5000 : 3000
       logger.info(`Reconnect dalam ${delay / 1000}s...`)
       setTimeout(connect, delay)
     }
   })
 
+  sock.ev.on('group-participants.update', (update) => {
+    handleGroupEvents(sock, [update]).catch(e => logger.error(`GroupEvent: ${e.message}`))
+  })
+
   sock.ev.on('messages.upsert', ({ messages, type }) => {
     if (type !== 'notify') return
     for (const m of messages) {
       if (!m.message) continue
+      const isGroup = m.key.remoteJid?.endsWith('@g.us')
+      handleIncomingMessage(sock, m, isGroup).catch(() => {})
       messageHandler(sock, m, commands, startTime).catch(e => logger.error(`MSG: ${e.message}`))
     }
   })
@@ -109,7 +109,6 @@ async function main() {
   console.clear()
   logger.banner()
 
-  logger.info('Loading commands...')
   commands = await loadCommands(COMMANDS)
   logger.success(`Loaded ${commands.size} commands`)
 
