@@ -40,6 +40,7 @@ export default {
 
     const picks = results.sort(() => Math.random() - 0.5).slice(0, 6)
 
+    // Download semua foto dulu
     const buffers = []
     for (const item of picks) {
       try {
@@ -57,7 +58,8 @@ export default {
       return
     }
 
-
+    // Kirim album message
+    // 1. Kirim albumMessage parent dulu
     const albumParent = await sock.sendMessage(chat, {
       album: {
         expectedImageCount: buffers.length,
@@ -68,7 +70,7 @@ export default {
     const parentKey = albumParent?.key
 
     if (!parentKey) {
-
+      // Fallback: kirim satu per satu jika albumMessage tidak support
       for (let i = 0; i < buffers.length; i++) {
         const { buf, item } = buffers[i]
         const caption = i === 0
@@ -84,6 +86,7 @@ export default {
       return
     }
 
+    // 2. Kirim tiap foto dengan albumParentKey
     for (let i = 0; i < buffers.length; i++) {
       const { buf, item } = buffers[i]
       const caption = i === 0
