@@ -64,6 +64,7 @@ export default {
       return
     }
 
+    // Strip comment header yang di-generate CRM
     code = code
       .split('\n')
       .filter(l => !l.startsWith('// Generated') && !l.startsWith('// Type:') && !l.startsWith('// Cara'))
@@ -78,6 +79,7 @@ async function _exec(sock, m, chat, jid, quoted, code) {
   const conn = sock
   const t0   = Date.now()
 
+  // Fungsi revive buffer — dipakai di dalam eval scope
   function reviveBuffers(obj) {
     if (obj && typeof obj === 'object') {
       if (obj.type === 'Buffer' && Array.isArray(obj.data)) return Buffer.from(obj.data)
@@ -90,7 +92,8 @@ async function _exec(sock, m, chat, jid, quoted, code) {
   let isError = false
 
   try {
-
+    // Expose semua vars ke scope — pakai Function constructor agar tidak
+    // double-wrap dan scope lebih bersih dari IIFE
     const fn = new Function(
       'sock', 'conn', 'jid', 'chat', 'm', 'quoted', 'reviveBuffers', 'Buffer',
       `return (async () => { ${code} })()`
