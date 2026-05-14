@@ -71,12 +71,18 @@ export default {
 
     // 3. cta_url
     await relay(sock, chat, m, iMsg(
-      'cta_url\nBuka URL di browser atau WA.',
-      'type: cta_url',
+      'Entahlah Males Jelasin',
+      'type: cta',
       [
         { name: 'cta_url', buttonParamsJson: JSON.stringify({ display_text: 'GitHub', url: 'https://github.com', merchant_url: 'https://github.com' }) },
-        { name: 'cta_url', buttonParamsJson: JSON.stringify({ display_text: 'Google', url: 'https://google.com', merchant_url: 'https://google.com' }) },
-        { name: 'cta_url', buttonParamsJson: JSON.stringify({ display_text: 'WA Link (webview)', url: 'https://wa.me/628xxxxxxxxxx', merchant_url: 'https://wa.me/628xxxxxxxxxx', webview_interaction: true }) },
+        {
+  name: "cta_reminder",
+  buttonParamsJson: JSON.stringify({})
+},
+        {
+  name: "cta_cancel_reminder",
+  buttonParamsJson: JSON.stringify({})
+},
       ]
     ))
     await delay(400)
@@ -199,7 +205,7 @@ export default {
     ))
     await delay(400)
 
-    // 18. ALL IN 0N33
+    // 18. ALL IN ONE — kombinasi yang sering dipakai
     await relay(sock, chat, m, iMsg(
       'ALL IN ONE\nKombinasi: single_select + quick_reply + cta_url + cta_copy + cta_call + send_location',
       'type: mixed | Lumi Hevia',
